@@ -7,9 +7,9 @@
 
 const { chromium } = require('playwright');
 
-const LC_URL   = 'https://eurolimo.limoconnect247.net';
-const LC_EMAIL = 'Bot@test.dk';
-const LC_PASS  = 'Test123!';
+const LC_URL   = 'https://eurolimo.limoconnect247.net/login';
+const LC_EMAIL = process.env.LC_EMAIL;
+const LC_PASS  = process.env.LC_PASS;
 
 let _browser  = null;
 let _ctx      = null;

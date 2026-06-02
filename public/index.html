@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>EuroLimo Dispatcher</title>
+<style>
+:root{
+  --bg:#0f1117;--surface:#1a1d27;--surface2:#22263a;--border:#2e3350;
+  --accent:#f0b429;--accent2:#e8890c;--text:#e8eaf0;--muted:#7b82a0;
+  --success:#2ec27e;--danger:#e05252;--info:#4a9eff;--warn:#f0b429;--rs:#9b6dff;
+  --r:10px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:system-ui,sans-serif;font-size:14px;min-height:100vh}
+.layout{display:flex;height:100vh;overflow:hidden}
+.sidebar{width:220px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0}
+.main{flex:1;overflow-y:auto;padding:24px}
+.logo{padding:20px 16px 12px;border-bottom:1px solid var(--border)}
+.logo h1{font-size:15px;font-weight:700;color:var(--accent)}
+.logo p{font-size:11px;color:var(--muted);margin-top:3px}
+.nav{padding:12px 8px;flex:1}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:8px;cursor:pointer;color:var(--muted);font-size:13px;transition:.15s;margin-bottom:2px}
+.nav-item:hover{background:var(--surface2);color:var(--text)}
+.nav-item.active{background:rgba(240,180,41,.12);color:var(--accent)}
+.sf{padding:12px 16px;border-top:1px solid var(--border);font-size:11px;color:var(--muted)}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--muted);display:inline-block;margin-right:5px}
+.dot.ok{background:var(--success)}.dot.err{background:var(--danger)}.dot.loading{background:var(--warn)}
+
+/* topbar */
+.topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;gap:12px;flex-wrap:wrap}
+.topbar h2{font-size:20px;font-weight:700;flex-shrink:0}
+.topbar-right{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+
+/* date range bar */
+.date-bar{display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:10px 14px;margin-bottom:20px;flex-wrap:wrap}
+.date-bar label{font-size:12px;color:var(--muted);white-space:nowrap}
+.date-bar input[type=date]{background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:5px 9px;color:var(--text);font-size:13px;color-scheme:dark}
+.date-bar input[type=date]:focus{outline:none;border-color:var(--accent)}
+.date-sep{color:var(--muted);font-size:13px}
+
+/* buttons */
+.btn{display:inline-flex;align-items:center;gap:7px;padding:8px 15px;border-radius:8px;border:none;cursor:pointer;font-size:13px;font-weight:600;transition:.15s;white-space:nowrap}
+.btn-primary{background:var(--accent);color:#111}.btn-primary:hover{background:var(--accent2)}
+.btn-secondary{background:var(--surface2);color:var(--text);border:1px solid var(--border)}.btn-secondary:hover{border-color:var(--muted)}
+.btn-success{background:var(--success);color:#fff}.btn-success:hover{opacity:.9}
+.btn-ghost{background:transparent;color:var(--muted);border:1px solid var(--border)}.btn-ghost:hover{color:var(--text)}
+.btn-sm{padding:5px 11px;font-size:12px}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+
+/* stats */
+.stats{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:20px}
+.stat{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px}
+.stat-label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+.stat-value{font-size:26px;font-weight:700}
+.accent{color:var(--accent)}.success{color:var(--success)}.info{color:var(--info)}.danger{color:var(--danger)}.rsv{color:var(--rs)}
+
+/* cards */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:16px}
+.card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;gap:8px;flex-wrap:wrap}
+.card-title{font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.6px}
+
+/* table */
+.tbl-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse}
+thead th{padding:9px 11px;text-align:left;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--border);white-space:nowrap}
+tbody tr{border-bottom:1px solid rgba(46,51,80,.4);transition:.1s}
+tbody tr:hover{background:rgba(255,255,255,.02)}
+tbody td{padding:9px 11px;vertical-align:middle}
+
+/* badges */
+.badge{display:inline-flex;align-items:center;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:600;white-space:nowrap}
+.badge-c2c{background:rgba(74,158,255,.15);color:var(--info)}
+.badge-a2c{background:rgba(46,194,126,.15);color:var(--success)}
+.badge-c2a{background:rgba(240,180,41,.15);color:var(--accent)}
+.badge-rs {background:rgba(155,109,255,.15);color:var(--rs)}
+.badge-far{background:rgba(224,82,82,.15);color:var(--danger)}
+.badge-pub{background:rgba(46,194,126,.2);color:var(--success)}
+.badge-err{background:rgba(224,82,82,.2);color:var(--danger)}
+.badge-skip{background:rgba(123,130,160,.15);color:var(--muted)}
+
+/* inline controls */
+.isel{background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:5px 8px;color:var(--text);font-size:13px;min-width:130px}
+.isel:focus{outline:none;border-color:var(--accent)}
+.iinp{background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:5px 8px;color:var(--text);font-size:13px;width:72px}
+.iinp:focus{outline:none;border-color:var(--accent)}
+.changed{border-color:var(--accent)!important}
+
+/* publish btn */
+.pub{padding:4px 10px;border-radius:6px;border:none;cursor:pointer;font-size:11px;font-weight:600}
+.pub.ready{background:rgba(46,194,126,.15);color:var(--success);border:1px solid rgba(46,194,126,.3)}
+.pub.ready:hover{background:var(--success);color:#fff}
+.pub.done{color:var(--success);background:transparent;border:1px solid transparent;cursor:default}
+.pub.error{background:rgba(224,82,82,.15);color:var(--danger);border:1px solid rgba(224,82,82,.3)}
+.pub:disabled{opacity:.45;cursor:not-allowed}
+
+/* driver cards */
+.driver-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px}
+.driver-card{background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:14px}
+.driver-card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:11px}
+.driver-name{font-weight:600;font-size:14px}
+.field-row{display:flex;gap:8px;margin-bottom:8px}
+.field{flex:1}
+.field label{display:block;font-size:11px;color:var(--muted);margin-bottom:3px}
+.field input,.field select{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:6px 8px;color:var(--text);font-size:13px}
+.field input:focus,.field select:focus{outline:none;border-color:var(--accent)}
+
+/* timeline */
+.tl-driver{margin-bottom:16px}
+.tl-label{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:7px}
+.tl-row{display:flex;gap:4px;flex-wrap:wrap}
+.tl-block{padding:5px 10px;border-radius:6px;font-size:12px;font-weight:500;white-space:nowrap}
+.tl-c2c{background:rgba(74,158,255,.2);color:var(--info)}
+.tl-a2c{background:rgba(46,194,126,.2);color:var(--success)}
+.tl-c2a{background:rgba(240,180,41,.2);color:var(--accent)}
+.tl-rs {background:rgba(155,109,255,.2);color:var(--rs)}
+.tl-far{background:rgba(224,82,82,.2);color:var(--danger)}
+
+/* loading overlay */
+.loading-overlay{position:fixed;inset:0;background:rgba(15,17,23,.75);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:200;gap:14px}
+.loading-overlay p{color:var(--text);font-size:15px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.spinner{width:36px;height:36px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite}
+.spinner-sm{width:16px;height:16px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;display:inline-block}
+
+/* toast */
+.toast{position:fixed;bottom:22px;right:22px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:13px 16px;font-size:13px;max-width:340px;z-index:300;display:flex;align-items:flex-start;gap:10px;box-shadow:0 8px 32px rgba(0,0,0,.45)}
+.toast.success{border-color:var(--success)}.toast.error{border-color:var(--danger)}
+.toast-close{margin-left:auto;cursor:pointer;color:var(--muted);font-size:16px;line-height:1}
+
+/* empty */
+.empty{text-align:center;padding:60px 20px;color:var(--muted)}
+.empty-icon{font-size:36px;margin-bottom:12px;opacity:.5}
+
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+select option{background:#1a1d27}
+input[type=time],input[type=date]{color-scheme:dark}
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+<script type="text/babel">
+const { useState, useEffect, useRef, useCallback } = React;
+
+// ── helpers ───────────────────────────────────────────────────────────────────
+async function api(path, opts={}) {
+  const r = await fetch(path, {
+    headers: {'Content-Type':'application/json'},
+    ...opts,
+    body: opts.body ? JSON.stringify(opts.body) : undefined,
+  });
+  return r.json();
+}
+
+const today = () => new Date().toISOString().slice(0,10);
+const fmt   = dt => dt ? new Date(dt).toLocaleTimeString('da-DK',{hour:'2-digit',minute:'2-digit'}) : '—';
+
+const AIRPORT_KW = ['cph','lufthavn','copenhagen airport','kastrup'];
+const norm = s => (s||'').trim().toLowerCase();
+const isAir = t => AIRPORT_KW.some(k => norm(t).includes(k));
+
+function tripLabel(t) {
+  const txt = norm(`${t.customer||''} ${t.serviceType||''}`);
+  if (['roadshow','site inspection','hourly'].some(k=>txt.includes(k))) return 'rs';
+  if ((parseFloat(t.distanceKm)||0) >= 45) return 'far';
+  if (isAir(t.from)) return 'a2c';
+  if (isAir(t.to))   return 'c2a';
+  return 'c2c';
+}
+
+function getBusy(t) {
+  const txt = norm(`${t.customer||''} ${t.serviceType||''}`);
+  const isRS = ['roadshow','site inspection','hourly'].some(k=>txt.includes(k));
+  if (isRS) {
+    if (t.durationMinutes>0) return t.durationMinutes;
+    if (t.durationHours>0)   return Math.round(t.durationHours*60);
+    return (t.tripMinutes||30)+60;
+  }
+  const km = parseFloat(t.distanceKm)||0;
+  if (km>=45) return (t.tripMinutes||30)+(isAir(t.from)?30:0);
+  return t.tripMinutes||30;
+}
+
+function clientAllocate(trips, drivers) {
+  const GAP = {C2C:{C2C:25,A2C:30,C2A:25},A2C:{C2C:50,A2C:50,C2A:50},C2A:{C2C:50,A2C:0,C2A:40}};
+  const getType = t => isAir(t.from)?'A2C':isAir(t.to)?'C2A':'C2C';
+  const sorted  = [...trips].sort((a,b)=>new Date(a.pickupTime)-new Date(b.pickupTime));
+  const st = {};
+  drivers.filter(d=>d.name).forEach(d=>{
+    st[d.name]={lastEnd:null,lastType:null,count:0,
+      shiftStart:d.shiftStart?new Date(d.shiftStart):null,
+      shiftEnd:  d.shiftEnd  ?new Date(d.shiftEnd)  :null};
+  });
+  return sorted.map(trip=>{
+    const pickup = new Date(trip.pickupTime);
+    const busy   = getBusy(trip);
+    const tType  = getType(trip);
+    let best=null,bestScore=Infinity;
+    Object.entries(st).forEach(([name,s])=>{
+      if(s.shiftStart && pickup<new Date(s.shiftStart.getTime()-30*60000)) return;
+      if(s.shiftEnd   && pickup>new Date(s.shiftEnd.getTime()  +30*60000)) return;
+      if(s.lastEnd){
+        const gap=(pickup-s.lastEnd)/60000;
+        if(gap<(GAP[s.lastType]?.[tType]??25)) return;
+      }
+      const sh=s.shiftStart&&s.shiftEnd?(s.shiftEnd-s.shiftStart)/3600000:8;
+      const score=s.count/Math.max(sh,.1);
+      if(score<bestScore){best=name;bestScore=score;}
+    });
+    if(best){st[best].lastEnd=new Date(pickup.getTime()+busy*60000);st[best].lastType=tType;st[best].count++;}
+    return {...trip,assignedDriver:best||null,busyMinutes:busy,
+      durationMinutes:trip.durationMinutes||busy,tripType:tType,
+      publishStatus:'pending',manuallyEdited:false,_orig:best};
+  });
+}
+
+const DEMO_DRIVERS = [
+  {name:'Ahmed K.',   shiftStart:'',shiftEnd:''},
+  {name:'Lars M.',    shiftStart:'',shiftEnd:''},
+  {name:'Yusuf A.',   shiftStart:'',shiftEnd:''},
+  {name:'Mikkel P.',  shiftStart:'',shiftEnd:''},
+];
+
+// ── Toast ─────────────────────────────────────────────────────────────────────
+function Toast({msg,type,onClose}){
+  useEffect(()=>{const t=setTimeout(onClose,5000);return()=>clearTimeout(t)},[]);
+  const icon = type==='success'?'✓':type==='error'?'✕':'ℹ';
+  return <div className={`toast ${type}`}><span>{icon}</span><span style={{flex:1}}>{msg}</span><span className="toast-close" onClick={onClose}>×</span></div>;
+}
+
+// ── DateRangeBar ──────────────────────────────────────────────────────────────
+function DateRangeBar({start,end,onStart,onEnd,onFetch,loading}){
+  return (
+    <div className="date-bar">
+      <label>From</label>
+      <input type="date" value={start} onChange={e=>onStart(e.target.value)} max={end}/>
+      <span className="date-sep">→</span>
+      <label>To</label>
+      <input type="date" value={end} onChange={e=>onEnd(e.target.value)} min={start}/>
+      <button className="btn btn-primary btn-sm" onClick={onFetch} disabled={loading} style={{marginLeft:4}}>
+        {loading ? <span className="spinner-sm"/> : '↓'} Load from LimoConnect
+      </button>
+      <span style={{fontSize:11,color:'var(--muted)',marginLeft:4}}>Fetches live via Playwright</span>
+    </div>
+  );
+}
+
+// ── TripRow ───────────────────────────────────────────────────────────────────
+function TripRow({trip,drivers,onChange,onPublish}){
+  const label = tripLabel(trip);
+  const isRS  = label==='rs';
+  const pub   = trip.publishStatus;
+  const driverChanged = trip.manuallyEdited && trip.assignedDriver !== trip._orig;
+  const durChanged    = trip.manuallyEdited && trip.durationMinutes !== trip._origDur;
+  const set = (k,v) => onChange({...trip,[k]:v,manuallyEdited:true});
+
+  const LABELS = {c2c:'City→City',a2c:'Airport→City',c2a:'City→Airport',rs:'Roadshow/Hourly',far:'Long trip'};
+
+  return (
+    <tr>
+      <td style={{color:'var(--muted)',fontSize:12,whiteSpace:'nowrap'}}>{fmt(trip.pickupTime)}</td>
+      <td>
+        <div style={{fontWeight:600,fontSize:13,maxWidth:160,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{trip.customer||'—'}</div>
+        <div style={{fontSize:11,color:'var(--muted)'}}>{trip.refNo}</div>
+      </td>
+      <td>
+        <div style={{fontSize:12,maxWidth:180,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{trip.from||'—'}</div>
+        <div style={{fontSize:11,color:'var(--muted)',marginTop:1}}>→ {trip.to||'—'}</div>
+      </td>
+      <td><span className={`badge badge-${label}`}>{LABELS[label]||label}</span></td>
+      <td>
+        <select className={`isel ${driverChanged?'changed':''}`} value={trip.assignedDriver||''} onChange={e=>set('assignedDriver',e.target.value)} disabled={pub==='published'}>
+          <option value="">— unassigned —</option>
+          {drivers.filter(d=>d.name).map(d=><option key={d.name} value={d.name}>{d.name}</option>)}
+        </select>
+      </td>
+      <td>
+        <div style={{display:'flex',alignItems:'center',gap:5}}>
+          <input type="number" className={`iinp ${durChanged?'changed':''}`}
+            value={trip.durationMinutes||trip.busyMinutes||30} min={0} step={isRS?30:5}
+            onChange={e=>set('durationMinutes',parseInt(e.target.value)||0)}
+            disabled={pub==='published'} title={isRS?'Roadshow duration (min)':'Trip duration (min)'}/>
+          <span style={{fontSize:11,color:'var(--muted)'}}>min</span>
+          {isRS && <span style={{fontSize:10,color:'var(--rs)',fontWeight:700}}>RS</span>}
+        </div>
+      </td>
+      <td>
+        {pub==='published' ? <span className="badge badge-pub">✓ Published</span>
+         :pub==='error'    ? <span className="badge badge-err" title={trip.publishError}>✕ Error</span>
+         :pub==='publishing'? <span className="spinner-sm"/>
+         :<button className="pub ready" onClick={()=>onPublish(trip)} disabled={!trip.assignedDriver}>
+            Publish ↗
+          </button>}
+      </td>
+    </tr>
+  );
+}
+
+// ── Timeline ──────────────────────────────────────────────────────────────────
+function Timeline({trips,drivers}){
+  const byDriver = {};
+  drivers.forEach(d=>{if(d.name) byDriver[d.name]=[]});
+  trips.forEach(t=>{if(t.assignedDriver&&byDriver[t.assignedDriver]) byDriver[t.assignedDriver].push(t)});
+  return (
+    <div>
+      {Object.entries(byDriver).map(([name,dtrips])=>(
+        <div className="tl-driver" key={name}>
+          <div className="tl-label">{name}</div>
+          <div className="tl-row">
+            {dtrips.length===0
+              ? <span style={{color:'var(--muted)',fontSize:12}}>No trips</span>
+              : dtrips.sort((a,b)=>new Date(a.pickupTime)-new Date(b.pickupTime)).map(t=>{
+                  const l=tripLabel(t), dur=t.durationMinutes||t.busyMinutes||30;
+                  return <div key={t.id} className={`tl-block tl-${l}`} title={`${t.customer} — ${fmt(t.pickupTime)}, ${dur}min`}>
+                    {fmt(t.pickupTime)} · {(t.customer||'?').split(' ')[0]} ({dur}m)
+                  </div>;
+                })}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ── DriverSetup ───────────────────────────────────────────────────────────────
+function DriverSetup({drivers,setDrivers}){
+  const upd = (i,k,v) => setDrivers(p=>p.map((d,j)=>j===i?{...d,[k]:v}:d));
+  const td  = today();
+  return (
+    <div>
+      <div className="topbar">
+        <h2>Drivers</h2>
+        <button className="btn btn-secondary" onClick={()=>setDrivers(p=>[...p,{name:'',shiftStart:'',shiftEnd:''}])}>+ Add driver</button>
+      </div>
+      <div className="driver-grid">
+        {drivers.map((d,i)=>(
+          <div className="driver-card" key={i}>
+            <div className="driver-card-header">
+              <span className="driver-name">{d.name||<span style={{color:'var(--muted)'}}>New driver</span>}</span>
+              <button style={{background:'none',border:'none',color:'var(--muted)',cursor:'pointer',fontSize:16}} onClick={()=>setDrivers(p=>p.filter((_,j)=>j!==i))}>✕</button>
+            </div>
+            <div className="field-row"><div className="field" style={{flex:2}}><label>Name</label><input value={d.name} onChange={e=>upd(i,'name',e.target.value)} placeholder="Driver name"/></div></div>
+            <div className="field-row">
+              <div className="field"><label>Shift start</label><input type="time" value={d.shiftStart?d.shiftStart.slice(11,16):''} onChange={e=>upd(i,'shiftStart',e.target.value?`${td}T${e.target.value}`:'')}/></div>
+              <div className="field"><label>Shift end</label><input type="time" value={d.shiftEnd?d.shiftEnd.slice(11,16):''} onChange={e=>upd(i,'shiftEnd',e.target.value?`${td}T${e.target.value}`:'')}/></div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── App ───────────────────────────────────────────────────────────────────────
+function App(){
+  const [view,      setView]     = useState('trips');
+  const [trips,     setTrips]    = useState([]);
+  const [drivers,   setDrivers]  = useState(DEMO_DRIVERS);
+  const [startDate, setStart]    = useState(today());
+  const [endDate,   setEnd]      = useState(today());
+  const [lcStatus,  setLcStatus] = useState('idle'); // idle|loading|ok|error
+  const [fetching,  setFetching] = useState(false);
+  const [publishing,setPublishing]=useState(false);
+  const [toast,     setToast]    = useState(null);
+  const [loadMsg,   setLoadMsg]  = useState('');
+
+  const showToast = (msg,type='info') => setToast({msg,type});
+
+  // ── Fetch from LC ───────────────────────────────────────────────────────
+  async function fetchFromLC(){
+    setFetching(true);
+    setLcStatus('loading');
+    setLoadMsg('Logging into LimoConnect…');
+    try {
+      const res = await api(`/api/lc/trips?start=${startDate}&end=${endDate}`);
+      if (!res.ok) throw new Error(res.error||'Unknown error');
+      const raw = res.trips || [];
+      if (raw.length===0){
+        showToast(`No bookings found for ${startDate}${endDate!==startDate?' – '+endDate:''}`, 'info');
+        setLcStatus('ok');
+        setFetching(false);
+        setLoadMsg('');
+        return;
+      }
+      // Enrich trips
+      const enriched = raw.map((t,i)=>({
+        ...t,
+        id: t.id||String(i+1),
+        durationMinutes: getBusy(t),
+        busyMinutes:     getBusy(t),
+        tripType:        isAir(t.from)?'A2C':isAir(t.to)?'C2A':'C2C',
+        publishStatus:   'pending',
+        manuallyEdited:  false,
+        _orig:           t.assignedDriver||null,
+        _origDur:        getBusy(t),
+      }));
+      setTrips(enriched);
+      setLcStatus('ok');
+      showToast(`Loaded ${enriched.length} bookings from LimoConnect`, 'success');
+    } catch(e){
+      setLcStatus('error');
+      showToast(`LimoConnect error: ${e.message}`, 'error');
+      console.error(e);
+    }
+    setFetching(false);
+    setLoadMsg('');
+  }
+
+  // ── Auto-allocate ───────────────────────────────────────────────────────
+  function autoAllocate(){
+    const active = drivers.filter(d=>d.name);
+    if (!active.length){ showToast('Add at least one driver first','error'); return; }
+    const result = clientAllocate(trips, active);
+    setTrips(result.map(t=>({...t,_origDur:t.durationMinutes})));
+    showToast(`Assigned ${result.filter(t=>t.assignedDriver).length} of ${result.length} trips`,'success');
+  }
+
+  // ── Publish single ──────────────────────────────────────────────────────
+  async function publishTrip(trip){
+    setTrips(p=>p.map(t=>t.id===trip.id?{...t,publishStatus:'publishing'}:t));
+    try {
+      const res = await api('/api/lc/assign',{method:'POST',body:{lcId:trip.lcId,driverName:trip.assignedDriver,durationMinutes:trip.durationMinutes}});
+      if (!res.ok) throw new Error(res.error);
+      setTrips(p=>p.map(t=>t.id===trip.id?{...t,publishStatus:'published'}:t));
+      setLcStatus('ok');
+      showToast(`✓ ${trip.assignedDriver} → ${trip.lcId}`,'success');
+    } catch(e){
+      setTrips(p=>p.map(t=>t.id===trip.id?{...t,publishStatus:'error',publishError:e.message}:t));
+      setLcStatus('error');
+      showToast(`Failed ${trip.lcId}: ${e.message}`,'error');
+    }
+  }
+
+  // ── Publish all ─────────────────────────────────────────────────────────
+  async function publishAll(){
+    const pending = trips.filter(t=>t.assignedDriver && t.publishStatus!=='published');
+    if (!pending.length){ showToast('Nothing new to publish','info'); return; }
+    setPublishing(true);
+    setLoadMsg(`Publishing ${pending.length} trips to LimoConnect…`);
+    for (const t of pending){
+      await publishTrip(t);
+      await new Promise(r=>setTimeout(r,700));
+    }
+    setPublishing(false);
+    setLoadMsg('');
+    showToast('All trips processed','success');
+  }
+
+  // ── Stats ───────────────────────────────────────────────────────────────
+  const total     = trips.length;
+  const assigned  = trips.filter(t=>t.assignedDriver).length;
+  const published = trips.filter(t=>t.publishStatus==='published').length;
+  const roadshows = trips.filter(t=>tripLabel(t)==='rs').length;
+  const longTrips = trips.filter(t=>tripLabel(t)==='far').length;
+
+  const lcDotClass = lcStatus==='ok'?'ok':lcStatus==='error'?'err':lcStatus==='loading'?'loading':'';
+
+  return (
+    <div className="layout">
+      {/* Sidebar */}
+      <div className="sidebar">
+        <div className="logo"><h1>🚖 EuroLimo</h1><p>Booking Dispatcher</p></div>
+        <nav className="nav">
+          {[{id:'trips',label:'Trips',icon:'📋'},{id:'drivers',label:'Drivers',icon:'👤'},{id:'timeline',label:'Timeline',icon:'📅'}]
+            .map(n=><div key={n.id} className={`nav-item ${view===n.id?'active':''}`} onClick={()=>setView(n.id)}><span>{n.icon}</span><span>{n.label}</span></div>)}
+        </nav>
+        <div className="sf">
+          <div>LimoConnect</div>
+          <div style={{marginTop:5}}><span className={`dot ${lcDotClass}`}/>{lcStatus==='ok'?'Connected':lcStatus==='error'?'Error':lcStatus==='loading'?'Connecting…':'Not connected'}</div>
+        </div>
+      </div>
+
+      {/* Main */}
+      <div className="main">
+
+        {view==='trips' && (
+          <div>
+            <div className="topbar">
+              <h2>Trip Dispatcher</h2>
+              <div className="topbar-right">
+                <button className="btn btn-secondary" onClick={autoAllocate} disabled={!trips.length}>⚡ Auto-allocate</button>
+                <button className="btn btn-success"   onClick={publishAll}   disabled={publishing||!assigned}>{publishing?<span className="spinner-sm"/>:'↗'} Publish all to LC</button>
+              </div>
+            </div>
+
+            {/* Date range bar */}
+            <DateRangeBar start={startDate} end={endDate} onStart={setStart} onEnd={setEnd} onFetch={fetchFromLC} loading={fetching}/>
+
+            {/* Stats */}
+            <div className="stats">
+              <div className="stat"><div className="stat-label">Bookings</div><div className="stat-value accent">{total}</div></div>
+              <div className="stat"><div className="stat-label">Assigned</div><div className="stat-value success">{assigned}</div></div>
+              <div className="stat"><div className="stat-label">Published</div><div className="stat-value info">{published}</div></div>
+              <div className="stat"><div className="stat-label">Roadshows</div><div className="stat-value rsv">{roadshows}</div></div>
+              <div className="stat"><div className="stat-label">Long trips</div><div className="stat-value danger">{longTrips}</div></div>
+            </div>
+
+            {trips.length===0 ? (
+              <div className="card">
+                <div className="empty">
+                  <div className="empty-icon">📅</div>
+                  <p style={{fontWeight:600,marginBottom:8}}>No bookings loaded yet</p>
+                  <p style={{fontSize:12}}>Pick a date range above and click <strong>Load from LimoConnect</strong></p>
+                  <p style={{fontSize:11,marginTop:8,color:'var(--muted)'}}>Make sure the local server is running: <code>npm start</code></p>
+                </div>
+              </div>
+            ) : (
+              <div className="card">
+                <div className="card-header">
+                  <span className="card-title">{total} bookings — {startDate}{endDate!==startDate?' → '+endDate:''}</span>
+                  <span style={{fontSize:12,color:'var(--muted)'}}>Edit driver or duration, then Publish ↗</span>
+                </div>
+                <div className="tbl-wrap">
+                  <table>
+                    <thead><tr><th>Pickup</th><th>Customer</th><th>Route</th><th>Type</th><th>Driver</th><th>Duration</th><th>LC</th></tr></thead>
+                    <tbody>
+                      {[...trips].sort((a,b)=>new Date(a.pickupTime)-new Date(b.pickupTime)).map(trip=>(
+                        <TripRow key={trip.id} trip={trip} drivers={drivers}
+                          onChange={u=>setTrips(p=>p.map(t=>t.id===u.id?u:t))}
+                          onPublish={publishTrip}/>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {view==='drivers' && <DriverSetup drivers={drivers} setDrivers={setDrivers}/>}
+
+        {view==='timeline' && (
+          <div>
+            <div className="topbar"><h2>Driver Timeline</h2></div>
+            {trips.length===0
+              ? <div className="card"><div className="empty"><div className="empty-icon">📅</div><p>Load bookings first</p></div></div>
+              : <div className="card"><div className="card-header"><span className="card-title">Assignment overview</span></div><Timeline trips={trips} drivers={drivers}/></div>}
+          </div>
+        )}
+      </div>
+
+      {/* Loading overlay */}
+      {(fetching||publishing) && (
+        <div className="loading-overlay">
+          <div className="spinner"/>
+          <p>{loadMsg||'Working…'}</p>
+        </div>
+      )}
+
+      {toast && <Toast msg={toast.msg} type={toast.type} onClose={()=>setToast(null)}/>}
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('app')).render(<App/>);
+</script>
+</body>
+</html>

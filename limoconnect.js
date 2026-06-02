@@ -10,10 +10,19 @@ let _loggedIn = false;
 
 async function getPage() {
   if (!_browser) {
-    _browser = await chromium.launch({ headless: true });
+    _browser = await chromium.launch({
+  headless: false,
+  args: [
+    '--disable-blink-features=AutomationControlled',
+    '--no-sandbox',
+  ]
+});
   }
   if (!_page || _page.isClosed()) {
-    _page     = await _browser.newPage();
+    _page = await _browser.newContext({
+  userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+  viewport: { width: 1440, height: 900 },
+}).then(ctx => ctx.newPage());
     _loggedIn = false;
   }
   return _page;

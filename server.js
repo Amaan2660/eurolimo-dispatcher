@@ -244,6 +244,6 @@ app.get('*', function(req, res) {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-app.listen(PORT, function() {
+app.listen(PORT, '0.0.0.0', function() {
   console.log('\n🚖 EuroLimo Dispatcher → http://localhost:' + PORT + '\n');
 });

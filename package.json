@@ -4,7 +4,7 @@
   "description": "EuroLimo booking dispatcher with LimoConnect sync",
   "main": "server.js",
   "scripts": {
-    "start": "npx playwright install --with-deps chromium && node server.js",
+    "start": "node server.js",
     "install-browsers": "npx playwright install chromium"
   },
   "dependencies": {
